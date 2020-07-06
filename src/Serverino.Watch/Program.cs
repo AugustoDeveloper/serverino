@@ -9,6 +9,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serverino.Watch.Services;
+using Serverino.Watch.Models;
 
 namespace Serverino.Watch
 {
@@ -23,7 +25,6 @@ namespace Serverino.Watch
             Host.CreateDefaultBuilder(args)
                 .ConfigureAppConfiguration(builder => 
                 {
-                    
                     builder
                         .SetBasePath(AppContext.BaseDirectory)
                         .AddJsonFile("appsetings.json", true, true)
@@ -43,7 +44,12 @@ namespace Serverino.Watch
             {
                 Directory.CreateDirectory(runtimeHostDirectory);
             }
-            return service.AddHostedService<RuntimeHostingWorker>(s => new RuntimeHostingWorker(s.GetRequiredService<ILogger<RuntimeHostingWorker>>(), runtimeHostDirectory));
+            
+            return service
+                .AddScoped<IHostManager<Application>, HostApplicationManager>()
+                .AddScoped<IApplicationService>(s => new MemoryApplicationService(runtimeHostDirectory))
+                .AddScoped<IHostService, MemoryHostService>()
+                .AddHostedService<RuntimeHostingWorker>();
         }
     }
 }

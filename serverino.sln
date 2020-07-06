@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serverino.Watch", "src\Serv
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApp", "src\SampleApp\SampleApp.csproj", "{6B22A59C-6AC5-434C-B727-D796C4C993E3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{9666ADF3-044C-438C-9318-160A84F442C0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serverino.Watch.Tests", "test\Serverino.Watch.Tests\Serverino.Watch.Tests.csproj", "{B0C1728C-268D-48F1-962B-7DE6CECAF252}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,9 +50,22 @@ Global
 		{6B22A59C-6AC5-434C-B727-D796C4C993E3}.Release|x64.Build.0 = Release|Any CPU
 		{6B22A59C-6AC5-434C-B727-D796C4C993E3}.Release|x86.ActiveCfg = Release|Any CPU
 		{6B22A59C-6AC5-434C-B727-D796C4C993E3}.Release|x86.Build.0 = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|x64.Build.0 = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Debug|x86.Build.0 = Debug|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|x64.ActiveCfg = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|x64.Build.0 = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|x86.ActiveCfg = Release|Any CPU
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{01DBA4CE-82FB-4C9D-89CA-B4F93CC3F9C1} = {F02639E9-F67B-4817-A3FF-5F2955229726}
 		{6B22A59C-6AC5-434C-B727-D796C4C993E3} = {F02639E9-F67B-4817-A3FF-5F2955229726}
+		{B0C1728C-268D-48F1-962B-7DE6CECAF252} = {9666ADF3-044C-438C-9318-160A84F442C0}
 	EndGlobalSection
 EndGlobal

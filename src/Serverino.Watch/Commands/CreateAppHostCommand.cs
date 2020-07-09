@@ -9,27 +9,38 @@ using Microsoft.Extensions.DependencyInjection;
 using Serverino.Watch.Models;
 using Serverino.Watch.Services;
 using System;
+using System.IO;
 using System.Threading;
+using Serverino.Watch.Commands.Exceptions;
 
 namespace Serverino.Watch.Commands
 {
-    public class CreateAppHostCommand : IAsyncCommand
+    public class CreateAppHostCommand : AsyncAppCommandBase
     {
-        private readonly Application application;
         private readonly IHostService service;
-        private readonly ILogger logger;
-        private string LibraryFilename => $"{this.application.ApplicationPath}//{this.application.Name}.dll";
+        private readonly IApplicationService appService;
+        private string LibraryFilename => $"{this.Application.ApplicationPath}/{this.Application.Name}.dll";
         
-        public CreateAppHostCommand(Application app, IHostService service, ILogger logger = null)
+        public CreateAppHostCommand(Application app, IApplicationService appService, IHostService service, ILogger logger = null) : base(app, logger)
         {
-            this.application = app ?? throw new ArgumentNullException(nameof(app));
             this.service = service ?? throw new ArgumentNullException(nameof(service));
-            this.logger = logger;
+            this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
         }
         
-        async public Task ExecuteAsync(CancellationToken token = default)
+        async protected override Task ExecuteDomainAsync(CancellationToken token = default)
         {
-            this.logger.LogDebug($"The subdirectory add as an app {this.application.Name}");
+            if (!Directory.Exists(this.Application.ApplicationPath))
+            {
+                throw new DirectoryNotFoundException($"The directory not found: {this.Application.ApplicationPath}");
+            }
+                
+            if (!File.Exists(this.Application.MainLibraryFilename) ||
+                !File.Exists(this.Application.ConfigurationFilename))
+            {
+                throw new FileNotFoundException(
+                    $"Check if the files (library & configuration) is in {this.Application.ApplicationPath}\n- {this.Application.MainLibraryFilename}\n- {this.Application.ConfigurationFilename}");
+            }
+            this.Logger?.LogDebug($"The subdirectory add as an app {this.Application.Name}");
 
             var host = Host.CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(configBuilder => 
@@ -43,24 +54,32 @@ namespace Serverino.Watch.Commands
                     configBuilder.UseUrls($"http://+:{port}");
                 })
                 .Build();
+            
             await host.StartAsync(token);
-            this.service.AddNewHost(this.application, host);
+            this.service.AddNewHost(this.Application, host);
+            this.appService.PersistHostedApplications(this.Application);
         }
 
         private void ConfigureApp(WebHostBuilderContext context, IApplicationBuilder app)
         {
             app.UseRouting()
-               .UseEndpoints(endp =>
+               .UseEndpoints(endpoints =>
             {
-                endp.MapControllers();
+                endpoints.MapControllers();
+            });
+
+            app.Use(async (localContext, next) =>
+            {
+                this.Logger.LogInformation($"Request on [{localContext.Connection.LocalPort}] {localContext.Request.Path}");
+                await next.Invoke();
             });
         }
 
         private IConfiguration ConfigureAppConfiguration(IWebHostBuilder builder)
         { 
             var conf = new ConfigurationBuilder()
-                    .SetBasePath(this.application.ApplicationPath)
-                    .AddJsonFile("appsettings.json", true, true)
+                    .SetBasePath(this.Application.ApplicationPath)
+                    .AddJsonFile("AppSettings.json", true, true)
                     .Build();
             builder.UseConfiguration(conf);
             return conf;
@@ -68,7 +87,7 @@ namespace Serverino.Watch.Commands
 
         private void ConfigureServices(WebHostBuilderContext context, IServiceCollection svc)
         {
-            var libraryAssembly = Assembly.LoadFile(this.LibraryFilename);
+            var libraryAssembly = Assembly.LoadFile(this.Application.MainLibraryFilename);
 
             svc.AddControllers();
             svc.AddMvc()

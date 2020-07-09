@@ -4,32 +4,36 @@ using Microsoft.Extensions.Logging;
 using Serverino.Watch.Models;
 using Serverino.Watch.Services;
 using System.Threading;
+using Microsoft.Extensions.Hosting;
+using Serverino.Watch.Commands.Exceptions;
 
 namespace Serverino.Watch.Commands
 {
-    public class ShutdownAppHostCommand : IAsyncCommand
+    public class ShutdownAppHostCommand : AsyncAppCommandBase
     {
-        private readonly Application application;
         private readonly IHostService service;
-        private readonly ILogger logger;
-        public ShutdownAppHostCommand(Application app, IHostService service, ILogger logger = null)
+        private readonly IApplicationService appService;
+
+        public ShutdownAppHostCommand(Application app, IApplicationService appService, IHostService service, ILogger logger = null) : base(app, logger)
         {
-            this.application = app ?? throw new ArgumentNullException(nameof(app));
             this.service = service ?? throw new ArgumentNullException(nameof(service));
-            this.logger = logger;
+            this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
         }
-        public async Task ExecuteAsync(CancellationToken token = default)
+        async protected override Task ExecuteDomainAsync(CancellationToken token = default)
         {
-            using var host = this.service.GetByApp(this.application);
-            if (host == null)
+            using var host = this.service.GetByApp(this.Application);
+            if (host != null)
             {
-                return;
+                this.Logger?.LogInformation(
+                    $"[{this.Application.HostedKey}]Shutdowning the application {this.Application.Name} at {this.Application.ApplicationPath}");
+                await host.StopAsync(token);
+                this.Logger?.LogInformation(
+                    $"[{this.Application.HostedKey}]Application {this.Application.Name} stopped at {DateTime.Now}");
             }
-            
-            this.logger?.LogDebug($"[{this.application.HostedKey}]Shutdowning the application {this.application.Name} at {this.application.ApplicationPath}");
-            await host.StopAsync(token);
-            this.service.RemoveHost(this.application);
-            this.logger?.LogDebug($"[{this.application.HostedKey}]Application {this.application.Name} stopped at {DateTime.Now}");
+            this.Logger?.LogInformation($"[{this.Application.HostedKey}]Application {this.Application.Name} Removed Host at {DateTime.Now}");
+            this.service.RemoveHost(this.Application);
+            this.appService.RemoveHostedApplication(this.Application.Name);
+            this.Logger?.LogInformation($"[{this.Application.Name}] Removed Application at {DateTime.Now}");
         }
     }
 }

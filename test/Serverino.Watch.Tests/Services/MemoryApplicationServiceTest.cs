@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FluentAssertions;
 using Serverino.Watch.Models;
 using Serverino.Watch.Services;
@@ -8,8 +9,14 @@ using Xunit;
 
 namespace Serverino.Watch.Tests.Services
 {
-    public class MemoryApplicationServiceTest
+    public class MemoryApplicationServiceTest : IClassFixture<AppsFolderFixture>
     {
+        private AppsFolderFixture folderFixture;
+
+        public MemoryApplicationServiceTest(AppsFolderFixture folderFixture)
+        {
+            this.folderFixture = folderFixture;
+        }
         [Fact]
         public void When_Pass_Argument_Is_Invalid_To_Constructor_Should_Throws_Exceptions()
         {
@@ -29,321 +36,240 @@ namespace Serverino.Watch.Tests.Services
         [Fact]
         public void When_Call_GetNotHostedApplications_On_Empty_Folder_Should_Returns_Empty_Array()
         {
-            var emptyFolder = Path.Combine(AppContext.BaseDirectory, "EmptyFolder");
-            Directory.CreateDirectory(emptyFolder);
-            try
-            {
-                var service = new MemoryApplicationService(emptyFolder);
-                var apps = service.GetNotHostedApplications();
-                apps.Should().BeEmpty();
-            }
-            finally
-            {
-                Directory.Delete(emptyFolder);
-            }
+            this.folderFixture.RecreateAppsFolder();
+            
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder);
+            var apps = service.GetNotHostedApplications();
+            apps.Should().BeEmpty();
         }
         
         [Fact]
-        public void When_Call_GetNotHostedApplications_On_Apps_Folder_With_One_SubFolder_SampleApp_Should_Returns_One_Item_On_Array()
+        public void When_Call_GetNotHostedApplications_On_Apps_Folder_With_One_Empty_SubFolder_SampleApp_Should_Returns_Empty_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            var sampleAppFolder = Path.Combine(appsFolder, "SampleApp");
-            Directory.CreateDirectory(appsFolder);
-            Directory.CreateDirectory(sampleAppFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder);
-                var apps = service.GetNotHostedApplications();
-                apps.Should().HaveCount(1);
-                apps[0].Name.Should().Be("SampleApp");
-                apps[0].ApplicationPath.Should().Be(sampleAppFolder);
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder);
-                Directory.Delete(appsFolder);
-            }
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder = this.folderFixture.CreateSubDirectoryOnApps("SampleApp");
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder);
+            var apps = service.GetNotHostedApplications();
+            apps.Should().BeEmpty();
+        }
+        
+        [Fact]
+        public void When_Call_GetNotHostedApplications_On_Apps_Folder_With_One_SubFolder_SampleApp_With_A_TextFile_Without_Dll_Or_Config_File_Should_Returns_Empty_Array()
+        {
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder = this.folderFixture.CreateSubDirectoryOnApps("SampleApp");
+            using var textFile = this.folderFixture.CreateFileOnDirectory(sampleAppFolder, "notepad.txt");
+            
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder);
+            var apps = service.GetNotHostedApplications();
+            apps.Should().BeEmpty();
+        }
+        
+        [Fact]
+        public void When_Call_GetNotHostedApplications_On_Apps_Folder_With_One_SubFolder_SampleApp_With_Dll_And_Config_File_Should_Returns_One_Item_Array()
+        {
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder = this.folderFixture.CreateSubDirectoryOnApps("SampleApp");
+            using var libFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder, "SampleApp.dll");
+            using var configFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder, "AppSettings.json");
+            
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder);
+            var apps = service.GetNotHostedApplications();
+            apps.Should().NotBeEmpty();
+            apps[0].Name.Should().Be("SampleApp");
         }
         
         [Fact]
         public void When_Call_GetNotHostedApplications_On_Apps_Folder_With_One_SubFolder_SampleApp_And_This_App_Is_Already_Hosted_Should_Returns_Empty_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            var sampleAppFolder = Path.Combine(appsFolder, "SampleApp");
-            Directory.CreateDirectory(appsFolder);
-            Directory.CreateDirectory(sampleAppFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder,
-                    new Dictionary<string, Application>
-                        {{"SampleApp", new Application("SampleApp", sampleAppFolder, DateTime.Now)}});
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder = this.folderFixture.CreateSubDirectoryOnApps("SampleApp");
+            
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder,
+                new Dictionary<string, Application>
+                    {{"SampleApp", new Application("SampleApp", sampleAppFolder.FullName, DateTime.Now)}});
 
-                var apps = service.GetNotHostedApplications();
-                apps.Should().BeEmpty();
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder);
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetNotHostedApplications();
+            apps.Should().BeEmpty();
         }
         
         [Fact]
         public void When_Call_GetRemovedApplications_On_Apps_Folder_With_Empty_SubFolder_Should_Returns_All_Items()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            var sampleAppFolder = Path.Combine(appsFolder, "SampleApp");
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder = this.folderFixture.CreateSubDirectoryOnApps("SampleApp");
             
             var hostedApps = new Dictionary<string, Application>
             {
-                {"SampleApp1", new Application("SampleApp1", sampleAppFolder, DateTime.Now)},
-                {"SampleApp2", new Application("SampleApp2", sampleAppFolder, DateTime.Now)},
-                {"SampleApp3", new Application("SampleApp3", sampleAppFolder, DateTime.Now)}
+                {"SampleApp1", new Application("SampleApp1", sampleAppFolder.FullName, DateTime.Now)},
+                {"SampleApp2", new Application("SampleApp2", sampleAppFolder.FullName, DateTime.Now)},
+                {"SampleApp3", new Application("SampleApp3", sampleAppFolder.FullName, DateTime.Now)}
             };
             
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hostedApps);
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hostedApps);
 
-                var apps = service.GetRemovedApplications();
-                apps.Should().HaveCount(3);
-            }
-            finally
-            {
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetRemovedApplications();
+            apps.Should().HaveCount(3);
         }
         
         [Fact]
         public void When_Call_GetRemovedApplications_On_Apps_Folder_With_Two_Folders_Apps_And_Three_Apps_Hosted_Should_Returns_One_Element()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            var sampleAppFolder1 = Path.Combine(appsFolder, "SampleApp1");
-            var sampleAppFolder2 = Path.Combine(appsFolder, "SampleApp2");
-            var sampleAppFolder3 = Path.Combine(appsFolder, "SampleApp3");
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder1 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp1");
+            var sampleAppFolder2 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp2");
+            var sampleAppFolder3 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp3");
             
+            using var sampleAppOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "SampleApp1.dll");
+            using var sampleAppTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "SampleApp2.dll");
+
+            using var appConfigOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "AppSettings.json");
+            using var appConfigTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "AppSettings.json");
+
             var hostedApps = new Dictionary<string, Application>
             {
-                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1, DateTime.Now)},
-                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2, DateTime.Now)},
-                {"SampleApp3", new Application("SampleApp3", sampleAppFolder3, DateTime.Now)}
+                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1.FullName, DateTime.Now)},
+                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2.FullName, DateTime.Now)},
+                {"SampleApp3", new Application("SampleApp3", sampleAppFolder3.FullName, DateTime.Now)}
             };
             
-            Directory.CreateDirectory(appsFolder);
-            Directory.CreateDirectory(sampleAppFolder1);
-            Directory.CreateDirectory(sampleAppFolder2);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hostedApps);
-
-                var apps = service.GetRemovedApplications();
-                apps.Should().HaveCount(1);
-                apps[0].Name.Should().Be("SampleApp3");
-                apps[0].ApplicationPath.Should().Be(sampleAppFolder3);
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder2);
-                Directory.Delete(sampleAppFolder1);
-                Directory.Delete(appsFolder);
-            }
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hostedApps);
+            
+            Directory.Delete(sampleAppFolder3.FullName);
+            var apps = service.GetRemovedApplications();
+            apps.Should().HaveCount(1);
+            apps[0].Name.Should().Be("SampleApp3");
+            apps[0].ApplicationPath.Should().Be(sampleAppFolder3.FullName);
         }
         
         [Fact]
         public void When_Call_GetUpdatedApplications_On_Apps_Folder_And_Its_Empty_Should_Returns_Empty_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
+            this.folderFixture.RecreateAppsFolder();
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, new Dictionary<string, Application>());
 
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, new Dictionary<string, Application>());
-
-                var apps = service.GetUpdatedApplications();
-                apps.Should().BeEmpty();
-            }
-            finally
-            {
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetUpdatedApplications();
+            apps.Should().BeEmpty();
         }
         
         [Fact]
         public void When_Call_GetUpdatedApplications_On_Apps_Folder_And_Has_Three_Apps_Not_Hosted_Should_Returns_Empty_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder1 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp1");
+            var sampleAppFolder2 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp2");
+            var sampleAppFolder3 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp3");
             
-            var sampleAppFolder1 = Path.Combine(appsFolder, "SampleApp1");
-            var sampleAppFolder2 = Path.Combine(appsFolder, "SampleApp2");
-            var sampleAppFolder3 = Path.Combine(appsFolder, "SampleApp3");
-
+            using var sampleAppOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "SampleApp1.dll");
+            using var sampleAppTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "SampleApp2.dll");
+            using var sampleAppThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "SampleApp3.dll");
             
-            Directory.CreateDirectory(appsFolder);
-            var sampleApp1 = Directory.CreateDirectory(sampleAppFolder1);
-            var sampleApp2 = Directory.CreateDirectory(sampleAppFolder2);
-            var sampleApp3 = Directory.CreateDirectory(sampleAppFolder3);
+            using var appConfigOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "AppSettings.json");
+            using var appConfigTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "AppSettings.json");
+            using var appConfigThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "AppSettings.json");
             
             var hostedApps = new Dictionary<string, Application>
             {
-                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1, sampleApp1.LastWriteTimeUtc)},
-                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2, sampleApp2.LastWriteTimeUtc)},
-                {"SampleApp3", new Application("SampleApp3", sampleAppFolder3, sampleApp3.LastWriteTimeUtc)}
             };
+            
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hostedApps);
 
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hostedApps);
-
-                var apps = service.GetUpdatedApplications();
-                apps.Should().BeEmpty();
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder3);
-                Directory.Delete(sampleAppFolder2);
-                Directory.Delete(sampleAppFolder1);
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetUpdatedApplications();
+            apps.Should().BeEmpty();
         }
         
         [Fact]
         public void When_Call_GetUpdatedApplications_On_Apps_Folder_And_Has_Three_Apps_And_Two_Hosted_Should_Returns_Empty_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder1 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp1");
+            var sampleAppFolder2 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp2");
+            var sampleAppFolder3 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp3");
             
-            var sampleAppFolder1 = Path.Combine(appsFolder, "SampleApp1");
-            var sampleAppFolder2 = Path.Combine(appsFolder, "SampleApp2");
-            var sampleAppFolder3 = Path.Combine(appsFolder, "SampleApp3");
+            using var sampleAppOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "SampleApp1.dll");
+            using var sampleAppTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "SampleApp2.dll");
+            using var sampleAppThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "SampleApp3.dll");
+            
+            using var appConfigOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "AppSettings.json");
+            using var appConfigTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "AppSettings.json");
+            using var appConfigThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "AppSettings.json");
 
-            
-            Directory.CreateDirectory(appsFolder);
-            var sampleApp1 = Directory.CreateDirectory(sampleAppFolder1);
-            var sampleApp2 = Directory.CreateDirectory(sampleAppFolder2);
-            var sampleApp3 = Directory.CreateDirectory(sampleAppFolder3);
-            
             var hostedApps = new Dictionary<string, Application>
             {
-                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1, sampleApp1.LastWriteTimeUtc)},
-                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2, sampleApp2.LastWriteTimeUtc)}
+                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1.FullName, sampleAppFolder1.LastWriteTimeUtc)},
+                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2.FullName, sampleAppFolder2.LastWriteTimeUtc)}
             };
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hostedApps);
 
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hostedApps);
-
-                var apps = service.GetUpdatedApplications();
-                apps.Should().BeEmpty();
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder3);
-                Directory.Delete(sampleAppFolder2);
-                Directory.Delete(sampleAppFolder1);
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetUpdatedApplications();
+            apps.Should().BeEmpty();
         }
         
         [Fact]
         public void When_Call_GetUpdatedApplications_On_Apps_Folder_And_Has_Three_Apps_And_Two_Hosted_Was_Updated_Should_Returns_Two_Items_On_Array()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
+            this.folderFixture.RecreateAppsFolder();
+            var sampleAppFolder1 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp1");
+            var sampleAppFolder2 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp2");
+            var sampleAppFolder3 = this.folderFixture.CreateSubDirectoryOnApps("SampleApp3");
             
-            var sampleAppFolder1 = Path.Combine(appsFolder, "SampleApp1");
-            var sampleAppFolder2 = Path.Combine(appsFolder, "SampleApp2");
-            var sampleAppFolder3 = Path.Combine(appsFolder, "SampleApp3");
-
+            using var sampleAppOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "SampleApp1.dll");
+            using var sampleAppTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "SampleApp2.dll");
+            using var sampleAppThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "SampleApp3.dll");
             
-            Directory.CreateDirectory(appsFolder);
-            var sampleApp1 = Directory.CreateDirectory(sampleAppFolder1);
-            var sampleApp2 = Directory.CreateDirectory(sampleAppFolder2);
-            var sampleApp3 = Directory.CreateDirectory(sampleAppFolder3);
+            using var appConfigOneFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder1, "AppSettings.json");
+            using var appConfigTwoFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder2, "AppSettings.json");
+            using var appConfigThreeFileName = this.folderFixture.CreateFileOnDirectory(sampleAppFolder3, "AppSettings.json");
             
             var hostedApps = new Dictionary<string, Application>
             {
-                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1, DateTime.UtcNow.AddDays(-1))},
-                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2, DateTime.UtcNow.AddDays(-1))},
-                {"SampleApp3", new Application("SampleApp3", sampleAppFolder3, sampleApp3.LastWriteTimeUtc)}
+                {"SampleApp1", new Application("SampleApp1", sampleAppFolder1.FullName, DateTime.UtcNow.AddDays(-1))},
+                {"SampleApp2", new Application("SampleApp2", sampleAppFolder2.FullName, DateTime.UtcNow.AddDays(-1))},
+                {"SampleApp3", new Application("SampleApp3", sampleAppFolder3.FullName, sampleAppFolder3.LastWriteTimeUtc)}
             };
 
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hostedApps);
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hostedApps);
 
-                var apps = service.GetUpdatedApplications();
-                apps.Should().HaveCount(2);
-                apps[0].Name.Should().Be("SampleApp1");
-                apps[1].Name.Should().Be("SampleApp2");
-            }
-            finally
-            {
-                Directory.Delete(sampleAppFolder3);
-                Directory.Delete(sampleAppFolder2);
-                Directory.Delete(sampleAppFolder1);
-                Directory.Delete(appsFolder);
-            }
+            var apps = service.GetUpdatedApplications();
+            apps.Should().HaveCount(2);
+            apps.Any(x => "SampleApp1".Equals(x.Name)).Should().BeTrue();
+            apps.Any(x => "SampleApp2".Equals(x.Name)).Should().BeTrue();
         }
 
         [Fact]
         public void When_Call_PersistHostedApplications_Pass_Null_Applications_Should_Returns_ArgumentNullException()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, new Dictionary<string, Application>());
+            this.folderFixture.RecreateAppsFolder();
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, new Dictionary<string, Application>());
 
-                Action persistAction = () => service.PersistHostedApplications(null);
-                persistAction.Should().ThrowExactly<ArgumentNullException>();
-            }
-            finally
-            {
-                Directory.Delete(appsFolder);
-            }
+            Action persistAction = () => service.PersistHostedApplications(null);
+            persistAction.Should().ThrowExactly<ArgumentNullException>();
         }
         
         [Fact]
-        public void When_Call_PersistHostedApplications_Pass_Empty_Applications_Should_Returns_Should_Return_Nothing()
+        public void When_Call_PersistHostedApplications_Pass_Empty_Applications_Should_Returns_Should_Do_Nothing()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, new Dictionary<string, Application>());
+            this.folderFixture.RecreateAppsFolder();
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, new Dictionary<string, Application>());
 
-                service.PersistHostedApplications(new Application[]{});
-            }
-            finally
-            {
-                Directory.Delete(appsFolder);
-            }
+            service.PersistHostedApplications(new Application[]{});
         }
         
         [Fact]
         public void When_Call_PersistHostedApplications_Pass_One_Item_Applications_Should_Persist_On_Dictionary()
         {
-            var appsFolder = Path.Combine(AppContext.BaseDirectory, "Apps");
+            this.folderFixture.RecreateAppsFolder();
             var hosted = new Dictionary<string, Application>();
             var appName = Guid.NewGuid().ToString();
-            Directory.CreateDirectory(appsFolder);
-            try
-            {
-                var service = new MemoryApplicationService(appsFolder, hosted);
 
-                service.PersistHostedApplications(new Application[]{new Application(appName, AppContext.BaseDirectory, DateTime.Now), });
+            var service = new MemoryApplicationService(this.folderFixture.AppsFolder, hosted);
 
-                hosted.Values.Should().HaveCount(1);
-                hosted.ContainsKey(appName).Should().BeTrue();
-                hosted[appName].Name.Should().Be(appName);
-                hosted[appName].ApplicationPath.Should().Be(AppContext.BaseDirectory);
-            }
-            finally
-            {
-                Directory.Delete(appsFolder);
-            }
+            service.PersistHostedApplications(new Application[]{new Application(appName, AppContext.BaseDirectory, DateTime.Now), });
+
+            hosted.Values.Should().HaveCount(1);
+            hosted.ContainsKey(appName).Should().BeTrue();
+            hosted[appName].Name.Should().Be(appName);
+            hosted[appName].ApplicationPath.Should().Be(AppContext.BaseDirectory);
         }
     }
 }

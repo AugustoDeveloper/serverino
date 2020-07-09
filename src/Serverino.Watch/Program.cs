@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serverino.Watch.Commands;
 using Serverino.Watch.Services;
 using Serverino.Watch.Models;
 
@@ -38,7 +39,7 @@ namespace Serverino.Watch
 
         static public IServiceCollection AddWatcherHostService(this IServiceCollection service, IConfiguration configuration)
         {
-            var appsFolder = configuration.GetValue<string>("watchFolder", "apps");
+            var appsFolder = configuration.GetValue("watchFolder", "apps");
             var runtimeHostDirectory = Path.Combine(AppContext.BaseDirectory, appsFolder);
             if (!Directory.Exists(runtimeHostDirectory))
             {
@@ -46,9 +47,10 @@ namespace Serverino.Watch
             }
             
             return service
-                .AddScoped<IHostManager<Application>, HostApplicationManager>()
-                .AddScoped<IApplicationService>(s => new MemoryApplicationService(runtimeHostDirectory))
-                .AddScoped<IHostService, MemoryHostService>()
+                .AddSingleton<IHostManager<Application>, HostApplicationManager>()
+                .AddSingleton<IApplicationService>(s => new MemoryApplicationService(runtimeHostDirectory))
+                .AddSingleton<IHostService, MemoryHostService>()
+                .AddSingleton<IFactoryAsyncCommand, FactoryAsyncCommand>()
                 .AddHostedService<RuntimeHostingWorker>();
         }
     }

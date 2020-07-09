@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serverino.Watch.Commands;
 using Serverino.Watch.Models;
@@ -17,44 +16,80 @@ namespace Serverino.Watch
         private readonly Queue<IAsyncCommand> queueCommands;
         private readonly ILogger<HostApplicationManager> logger;
         private readonly IHostService service;
-        
-        public HostApplicationManager(ILogger<HostApplicationManager> logger, IHostService service)
+        private readonly IApplicationService appService;
+        private readonly IFactoryAsyncCommand factoryCommand;
+
+        public HostApplicationManager(IApplicationService appService, IHostService service,
+            IFactoryAsyncCommand factoryCommand, ILogger<HostApplicationManager> logger)
         {
             this.queueCommands = new Queue<IAsyncCommand>();
+            this.service = service ?? throw new ArgumentNullException(nameof(this.service));
+            this.appService = appService ?? throw new ArgumentNullException(nameof(this.appService));
+            this.factoryCommand = factoryCommand ?? throw new ArgumentNullException(nameof(this.appService));
             this.logger = logger;
-            this.service = service;
         }
 
-        private IHostManager<Application> EnqueueCommands(IAsyncCommand command)
+        public IHostManager<Application> AddHost(Application model)
         {
+            model = model ?? throw new ArgumentNullException(nameof(model));
+            var command = this.factoryCommand
+                .With(model)
+                .With(this.appService)
+                .With(this.service)
+                .With(this.logger)
+                .Create<CreateAppHostCommand>();
+            this.queueCommands.Enqueue(command);
+            
+            return this;
+        } 
+
+        public IHostManager<Application> ShutdownHost(Application model)
+        {
+            model = model ?? throw new ArgumentNullException(nameof(model));
+            var command = this.factoryCommand
+                .With(model)
+                .With(this.service)
+                .With(this.logger)
+                .Create<ShutdownAppHostCommand>();
+            
             this.queueCommands.Enqueue(command);
             return this;
         }
 
-        public IHostManager<Application> AddHost(Application model)
-            => EnqueueCommands(new CreateAppHostCommand(model, this.service, logger));
-
-        public IHostManager<Application> ShutdownHost(Application model)
-            => EnqueueCommands(new ShutdownAppHostCommand(model, this.service, logger));
-
         public IHostManager<Application> UpdateHost(Application model)
-            => EnqueueCommands(
-                new UpdateAppHostCommand(
-                    model, 
-                    new CreateAppHostCommand(model, this.service, this.logger),
-                    new ShutdownAppHostCommand(model, this.service, this.logger),
-                    logger));
+        {
+            model = model ?? throw new ArgumentNullException(nameof(model));
+            var createAppHostCommand = this.factoryCommand
+                .With(model)
+                .With(this.appService)
+                .With(this.service)
+                .With(this.logger)
+                .Create<CreateAppHostCommand>();
+            
+            var shutdownAppHostCommand = this.factoryCommand
+                .With(model)
+                .With(this.service)
+                .With(this.logger)
+                .Create<ShutdownAppHostCommand>();
+
+            var aggregateCommands = this.factoryCommand
+                .With(shutdownAppHostCommand, createAppHostCommand)
+                .Create<AggregateCommandsCommand>();
+            
+            this.queueCommands.Enqueue(aggregateCommands);
+            return this;
+        }
 
         async public Task PersistAsync(CancellationToken token = default)
         {
             var tasks = new List<Task>();
-            while(!token.IsCancellationRequested && queueCommands.Count > 0)
+            while(!token.IsCancellationRequested && queueCommands.Any())
             {
+                var taskCommand = queueCommands.TryDequeue(out var command)
+                    ? command.ExecuteAsync(token)
+                    : Task.CompletedTask;
                 
-                if (queueCommands.TryDequeue(out var command))
-                {
-                    tasks.Add(command.ExecuteAsync(token));
-                }
+                tasks.Add(taskCommand);
             }
 
             await Task.WhenAll(tasks);

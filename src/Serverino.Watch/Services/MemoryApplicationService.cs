@@ -28,14 +28,19 @@ namespace Serverino.Watch.Services
             {
                 return new Application[]{ };
             }
-            
+
             var directories = subdirectories
-            .Select(s => new DirectoryInfo(s));
+                .Where(di => Directory.GetFiles(di).Length > 0)
+                .Select(s => new DirectoryInfo(s));
 
             return directories
-            .Where(di => !this.hostedApplications.ContainsKey(di.Name))
-            .Select(di => new Application(di.Name, di.FullName, di.LastWriteTimeUtc))
-            .ToArray();
+                .Where(di => !this.hostedApplications.ContainsKey(di.Name))
+                .Where(di => Directory.GetFiles(di.FullName).Any(f =>
+                    f.EndsWith($"{di.Name}.dll", StringComparison.InvariantCultureIgnoreCase)))
+                .Where(di => Directory.GetFiles(di.FullName).Any(f =>
+                    f.EndsWith($"AppSettings.json", StringComparison.InvariantCultureIgnoreCase)))
+                .Select(di => new Application(di.Name, di.FullName, di.LastWriteTimeUtc))
+                .ToArray();
         }
 
         public Application[] GetRemovedApplications()
@@ -50,7 +55,7 @@ namespace Serverino.Watch.Services
             .Select(s => new DirectoryInfo(s));
 
             return this.hostedApplications.Values
-            .Where(app => !directories.Any(di => di.Name == app.Name))
+            .Where(app => directories.All(di => di.Name != app.Name))
             .ToArray();
         }
 
@@ -61,13 +66,20 @@ namespace Serverino.Watch.Services
             {
                 return new Application[]{ };
             }
-            
+
             var directories = subdirectories
-            .Select(s => new DirectoryInfo(s));
+                .Where(di => Directory.GetFiles(di).Length > 0)
+                .Select(s => new DirectoryInfo(s))
+                .ToArray();
+            
 
             return directories
             .Where(di => this.hostedApplications.ContainsKey(di.Name) && 
                         di.LastWriteTimeUtc > this.hostedApplications[di.Name].ModifiedAt)
+            .Where(di => Directory.GetFiles(di.FullName).Any(f =>
+                f.EndsWith($"{di.Name}.dll", StringComparison.InvariantCultureIgnoreCase)))
+            .Where(di => Directory.GetFiles(di.FullName).Any(f =>
+                f.EndsWith($"AppSettings.json", StringComparison.InvariantCultureIgnoreCase)))
             .Select(di => this.hostedApplications[di.Name])
             .ToArray();
         }

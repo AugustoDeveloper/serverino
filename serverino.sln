@@ -13,6 +13,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{9666ADF3-0
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serverino.Watch.Tests", "test\Serverino.Watch.Tests\Serverino.Watch.Tests.csproj", "{B0C1728C-268D-48F1-962B-7DE6CECAF252}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "etc", "etc", "{B9FA03AF-13A4-4C0B-8A7C-F66F82DC7360}"
+ProjectSection(SolutionItems) = preProject
+	README.md = README.md
+	_config.yml = _config.yml
+	.gitignore = .gitignore
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

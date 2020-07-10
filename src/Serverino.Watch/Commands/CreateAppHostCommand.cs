@@ -42,13 +42,19 @@ namespace Serverino.Watch.Commands
             }
             this.Logger?.LogDebug($"The subdirectory add as an app {this.Application.Name}");
 
+            int port = 0;
+
             var host = Host.CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(configBuilder => 
                 {
                     var localConfiguration = ConfigureAppConfiguration(configBuilder);
-                    var port = localConfiguration.GetValue<int>("port");
+                    port = localConfiguration.GetValue<int>("port");
 
                     configBuilder.Configure(ConfigureApp);
+                    if (port < 1)
+                    {
+                        throw new InvalidOperationException($"The port {port} is invalid.");
+                    }
 
                     configBuilder.ConfigureServices(ConfigureServices);
                     configBuilder.UseUrls($"http://+:{port}");
@@ -58,6 +64,7 @@ namespace Serverino.Watch.Commands
             await host.StartAsync(token);
             this.service.AddNewHost(this.Application, host);
             this.appService.PersistHostedApplications(this.Application);
+            this.Logger?.LogInformation($"The application {this.Application.Name} is hosting -> http://+:{port}");
         }
 
         private void ConfigureApp(WebHostBuilderContext context, IApplicationBuilder app)

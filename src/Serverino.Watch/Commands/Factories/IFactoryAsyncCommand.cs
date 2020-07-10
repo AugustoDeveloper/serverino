@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Serverino.Watch.Models;
 using Serverino.Watch.Services;
 
-namespace Serverino.Watch.Commands
+namespace Serverino.Watch.Commands.Factories
 {
     public interface IFactoryAsyncCommand
     {

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Serverino.Watch.Commands;
 using Serverino.Watch.Commands.Exceptions;
+using Serverino.Watch.Commands.Factories;
 using Serverino.Watch.Models;
 using Serverino.Watch.Services;
 using Xunit;

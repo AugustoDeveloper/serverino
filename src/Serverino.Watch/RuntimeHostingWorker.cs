@@ -25,6 +25,7 @@ namespace Serverino.Watch
         async protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
             this.logger.LogInformation("Hosting Worker running at: {time}", DateTimeOffset.Now);
+            await Task.Delay(2500);
             while (!stoppingToken.IsCancellationRequested)
             {
                 try

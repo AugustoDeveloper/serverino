@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Serverino.Watch.Commands;
 using Serverino.Watch.Services;
 using Serverino.Watch.Models;
+using Serverino.Watch.Commands.Factories;
 
 namespace Serverino.Watch
 {

@@ -24,4 +24,4 @@ jobs:
     - name: Build
       run: dotnet build serverino.sln --configuration Release --no-restore
     - name: Test
-      run: dotnet test serverino.sln --no-restore --verbosity normal
+      run: dotnet test --no-restore --verbosity normal

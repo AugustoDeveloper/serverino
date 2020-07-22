@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
 using Serverino.Watch.Models;
 
 namespace Serverino.Watch.Services
@@ -9,12 +11,14 @@ namespace Serverino.Watch.Services
     public class MemoryHostService : IHostService
     {
         private readonly Dictionary<Guid, IHost> hosts;
+        private readonly ChannelWriter<string> applicationChannel;
         private bool disposed;
 
-        public MemoryHostService() : this(new Dictionary<Guid, IHost>()) {}
-        public MemoryHostService(Dictionary<Guid, IHost> hosts)
+        public MemoryHostService(ChannelWriter<string> applicationChannel = null) : this(new Dictionary<Guid, IHost>(), applicationChannel) {}
+        public MemoryHostService(Dictionary<Guid, IHost> hosts, ChannelWriter<string> applicationChannel = null)
         {
             this.hosts = hosts ?? throw new ArgumentNullException(nameof(hosts));
+            this.applicationChannel = applicationChannel;
         }
 
         public void AddNewHost(Application app, IHost host)
@@ -29,6 +33,7 @@ namespace Serverino.Watch.Services
             }
             
             app.MarkHosted(key);
+            this.applicationChannel.TryWrite(JsonConvert.SerializeObject(app));
         }
 
         public void RemoveHost(Application app)

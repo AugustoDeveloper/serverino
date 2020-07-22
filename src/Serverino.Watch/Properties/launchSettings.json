@@ -3,7 +3,9 @@
     "Serverino.Watch": {
       "commandName": "Project",
       "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://+:5892",
+        "PUBLIC_URL": "/app"
       }
     }
   }

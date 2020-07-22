@@ -11,7 +11,6 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.5" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Extensions" />
-    <Folder Include="Utils" />
+    <ProjectReference Include="..\PortAreaApp\PortAreaApp.csproj" />
   </ItemGroup>
 </Project>

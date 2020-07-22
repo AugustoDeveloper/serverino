@@ -21,7 +21,11 @@ namespace Serverino.Watch.Commands
         private readonly IApplicationService appService;
         private string LibraryFilename => $"{this.Application.ApplicationPath}/{this.Application.Name}.dll";
         
-        public CreateAppHostCommand(Application app, IApplicationService appService, IHostService service, ILogger logger = null) : base(app, logger)
+        public CreateAppHostCommand(
+            Application app, 
+            IApplicationService appService, 
+            IHostService service, 
+            ILogger logger = null) : base(app, logger)
         {
             this.service = service ?? throw new ArgumentNullException(nameof(service));
             this.appService = appService ?? throw new ArgumentNullException(nameof(appService));
@@ -58,9 +62,9 @@ namespace Serverino.Watch.Commands
 
                     configBuilder.ConfigureServices(ConfigureServices);
                     configBuilder.UseUrls($"http://+:{port}");
+                    this.Application.Port = port;
                 })
                 .Build();
-            
             await host.StartAsync(token);
             this.service.AddNewHost(this.Application, host);
             this.appService.PersistHostedApplications(this.Application);

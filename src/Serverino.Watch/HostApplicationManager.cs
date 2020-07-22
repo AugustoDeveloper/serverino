@@ -92,7 +92,7 @@ namespace Serverino.Watch
             while(!token.IsCancellationRequested && queueCommands.Any())
             {
                 var taskCommand = queueCommands.TryDequeue(out var command)
-                    ? command.ExecuteAsync(token).ContinueWith(CheckErrorOnPostCommandTask)
+                    ? command.ExecuteAsync(token).ContinueWith(CheckErrorOnPostCommandTask, token)
                     : Task.CompletedTask;
                 
                 tasks.Add(taskCommand);
@@ -103,6 +103,11 @@ namespace Serverino.Watch
 
         private Task CheckErrorOnPostCommandTask(Task commandTask)
         {
+            if (commandTask.IsFaulted)
+            {
+                this.logger.LogError(commandTask.Exception, "Error on Post Command");
+            }
+            
             if (commandTask.IsFaulted && commandTask.Exception.InnerException is InvalidCommandExectutionException commandException)
             {
                 var ignoreAppCommand = this.factoryCommand
@@ -110,6 +115,7 @@ namespace Serverino.Watch
                     .Create<IgnoreApplicationCommand>();
                 return ignoreAppCommand.ExecuteAsync();
             }
+
             return Task.CompletedTask;
         }
 

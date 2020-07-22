@@ -14,6 +14,7 @@ namespace Serverino.Watch.Models
         public string ConfigurationFilename => Path.Combine(this.ApplicationPath, "AppSettings.json");
         public string MainLibraryFilename => Path.Combine(this.ApplicationPath, $"{this.Name}.dll");
         public DateTime ModifiedAt { get; private set; }
+        public int Port { get; set; }
 
         public Application(string name, string path, DateTime lastModification)
         {

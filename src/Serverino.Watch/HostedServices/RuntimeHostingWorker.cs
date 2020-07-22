@@ -4,10 +4,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Serverino.Watch.Services;
 using Serverino.Watch.Models;
+using Serverino.Watch.Services;
 
-namespace Serverino.Watch
+namespace Serverino.Watch.HostedServices
 {
     public class RuntimeHostingWorker : BackgroundService
     {
@@ -25,7 +25,7 @@ namespace Serverino.Watch
         async protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
             this.logger.LogInformation("Hosting Worker running at: {time}", DateTimeOffset.Now);
-            await Task.Delay(2500);
+            await Task.Delay(2500, stoppingToken);
             while (!stoppingToken.IsCancellationRequested)
             {
                 try

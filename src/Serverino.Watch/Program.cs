@@ -29,7 +29,7 @@ namespace Serverino.Watch
                 {
                     builder
                         .SetBasePath(AppContext.BaseDirectory)
-                        .AddJsonFile("appsetings.json", true, true)
+                        .AddJsonFile("appsettings.json", true, true)
                         .AddEnvironmentVariables("SRVRN_");
                 })
                 .ConfigureServices((hostContext, services) =>

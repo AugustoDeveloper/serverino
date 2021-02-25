@@ -22,14 +22,14 @@ Every change on this inner folder, will trigger an update process and the hosted
  will restart.
   
 ## How to create an web api
-First of all, create a .Net Core Library and set this library as `netcoreapp3.1` and add the reference
+First of all, create a .Net Core Library and set this library as `net5.0` and add the reference
 `Microsoft.AspNetCore.App`, this way the 
 library goes to resolve dependencies on compile for your web application.
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

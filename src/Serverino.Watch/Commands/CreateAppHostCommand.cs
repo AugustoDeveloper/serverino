@@ -43,28 +43,43 @@ namespace Serverino.Watch.Commands
             this.Logger?.LogDebug($"The subdirectory add as an app {this.Application.Name}");
 
             int port = 0;
+            var useStartupClass = false;
 
-            var host = Host.CreateDefaultBuilder()
+            var host = Host
+                .CreateDefaultBuilder()
                 .ConfigureWebHostDefaults(configBuilder => 
                 {
                     var localConfiguration = ConfigureAppConfiguration(configBuilder);
                     port = localConfiguration.GetValue<int>("port");
+                    var startUpClass = localConfiguration.GetValue<string>("StartupClass", "");
+                    useStartupClass = !string.IsNullOrWhiteSpace(startUpClass);
 
-                    configBuilder.Configure(ConfigureApp);
                     if (port < 1)
                     {
                         throw new InvalidOperationException($"The port {port} is invalid.");
                     }
 
-                    configBuilder.ConfigureServices(ConfigureServices);
                     configBuilder.UseUrls($"http://+:{port}");
+                    configBuilder.UseContentRoot(this.Application.ApplicationPath);
+                    if(useStartupClass)
+                    {
+                        var libraryAssembly = Assembly.LoadFile(this.Application.MainLibraryFilename);
+
+                        var startupInstance  = libraryAssembly.CreateInstance(startUpClass, true, BindingFlags.CreateInstance, args: new[] { localConfiguration }, binder: null, culture: null, activationAttributes: null);
+                        configBuilder.UseStartup((factory) => startupInstance);
+                    }
+                    else
+                    {
+                        configBuilder.Configure(ConfigureApp);
+                        configBuilder.ConfigureServices(ConfigureServices);
+                    }
                 })
                 .Build();
             
             await host.StartAsync(token);
             this.service.AddNewHost(this.Application, host);
             this.appService.PersistHostedApplications(this.Application);
-            this.Logger?.LogInformation($"The application {this.Application.Name} is hosting -> http://+:{port}");
+            this.Logger?.LogInformation($"The application {this.Application.Name} is hosting "+(useStartupClass ? "using StartUp Class": "")+$" -> http://+:{port}");
         }
 
         private void ConfigureApp(WebHostBuilderContext context, IApplicationBuilder app)

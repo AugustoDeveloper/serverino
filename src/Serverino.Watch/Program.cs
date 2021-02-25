@@ -18,9 +18,9 @@ namespace Serverino.Watch
 {
     static public class Program
     {
-        static public void Main(string[] args)
+        async static public Task Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            await CreateHostBuilder(args).Build().RunAsync();
         }
 
         static public IHostBuilder CreateHostBuilder(string[] args) =>

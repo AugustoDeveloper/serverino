@@ -4,12 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": ".NET Core Launch (console)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/Serverino.Watch/bin/Debug/netcoreapp3.1/Serverino.Watch.dll",
+            "program": "${workspaceFolder}/src/Serverino.Watch/bin/Debug/net5.0/Serverino.Watch.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src/Serverino.Watch",
             "console": "internalConsole",
